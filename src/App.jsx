@@ -8,6 +8,10 @@ import Question from "./components/Question";
 import NextButton from "./components/NextButton";
 import Progress from "./components/Progress";
 import FinishScreen from "./components/FinishScreen";
+import Timer from "./components/Timer";
+import Footer from "./components/Footer";
+
+const SECS_PER_QUESTION = 30; // we have declared it to avoid magic no.
 
 const initialState = {
   questions: [],
@@ -17,6 +21,7 @@ const initialState = {
   answer: null,
   points: 0,
   highestScore: 0,
+  secondsRemaining: null, // we don't know the no. of seconds yet! so we have to calculate it when the questions are fetched
 };
 
 function reducer(state, action) {
@@ -28,7 +33,11 @@ function reducer(state, action) {
       return { ...state, questions: action.payload, status: "ready" };
 
     case "start":
-      return { ...state, status: "active" };
+      return {
+        ...state,
+        status: "active",
+        secondsRemaining: state.questions.length * SECS_PER_QUESTION,
+      };
 
     case "newAnswer": {
       const question = state.questions.at(state.index);
@@ -61,16 +70,32 @@ function reducer(state, action) {
         status: "ready",
         highestScore: state.highestScore,
       };
-    /*we could do it as {...state , other stats that will be overridden , but I used ... initial state as it more semantic that we restarting !} */
+    /*we could do it as {...state , other stats that will be overridden , but I used ... initial state as it more semantic that we restarting !}  */
 
+    case "tick":
+      return {
+        ...state,
+        secondsRemaining: state.secondsRemaining - 1,
+        status: state.secondsRemaining === 0 ? "finished" : state.status,
+      };
     default:
       throw new Error("Action unknown");
   }
 }
 
 export default function App() {
-  const [{ questions, status, index, answer, points, highestScore }, dispatch] =
-    useReducer(reducer, initialState); //destructing state into status & questions & ... , easier than state.questions/status...
+  const [
+    {
+      questions,
+      status,
+      index,
+      answer,
+      points,
+      highestScore,
+      secondsRemaining,
+    },
+    dispatch,
+  ] = useReducer(reducer, initialState); //destructing state into status & questions & ... , easier than state.questions/status...
 
   const numQuestions = questions.length;
   const maxPossiblePoints = questions.reduce(
@@ -108,12 +133,15 @@ export default function App() {
               dispatch={dispatch}
               answer={answer}
             />
-            <NextButton
-              dispatch={dispatch}
-              answer={answer}
-              index={index}
-              numQuestions={numQuestions}
-            />
+            <footer>
+              <Timer dispatch={dispatch} secondsRemaining={secondsRemaining} />
+              <NextButton
+                dispatch={dispatch}
+                answer={answer}
+                index={index}
+                numQuestions={numQuestions}
+              />
+            </footer>
           </>
         )}
         {status === "finished" && (
